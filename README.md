@@ -2,7 +2,7 @@
 
 # OCTANE / API REFERENCE
 
-### A community-made developer reference
+### An unofficial developer reference
 
 **Endpoints. Trading data. Game integrations.**
 
@@ -25,7 +25,7 @@
 | Find users, inventories, groups, or trades | [Octane API](#octane-api) |
 | Access item data, prices, or player search | [Octomon's API](#octomons-api) |
 | Use an endpoint inside a game | [Studio & Game Guide](#studio--game-guide) |
-| Explore more community-captured paths | [Community Endpoint Index](#community-endpoint-index) |
+| Explore additional endpoint paths | [Additional Octane Endpoints](#additional-octane-endpoints) |
 
 > [!IMPORTANT]
 > This is an **unofficial, incomplete** reference. Some endpoints were discovered in client code rather than tested directly. They can change, require authentication, or stop working without notice. Octomon's is a separate site from Octane.
@@ -34,7 +34,7 @@
 
 ## Octane API
 
-**More endpoints:** See [Community Endpoint Index](#community-endpoint-index) for the user-supplied unofficial reference, including chat, badges, catalog, legacy paths, and more. Some original paths lack confirmed hosts.
+**More endpoints:** See [Additional Octane Endpoints](#additional-octane-endpoints) for additional paths, including chat, badges, catalog, legacy paths, and more. Some original paths lack confirmed hosts.
 
 > User profiles, inventories, avatars, groups, games, and trades.
 
@@ -125,9 +125,9 @@ These use `https://octane.wtf` directly, **without** `/apisite`:
 | GET | `/users/{userId}` | Legacy user data, according to the client. |
 | GET | `/users/favorites/list-json?assetTypeId=9&itemsPerPage=24&pageNumber=1&userId={userId}` | User favorites; example parameters from the client. |
 
-### Additional endpoints found in Nexus
+### Additional endpoints
 
-These URLs were found in the third-party [Nexus extension](https://github.com/zykieboi/nexus). Checks below were made without login on 29 October 2026; the status is for the specific example only, not a guarantee for all users or assets.
+Checks below were made without login on 29 October 2026; the status is for the specific example only, not a guarantee for all users or assets.
 
 | Method | URL | Purpose and check |
 |---|---|---|
@@ -137,7 +137,7 @@ These URLs were found in the third-party [Nexus extension](https://github.com/zy
 | GET | `https://octane.wtf/apisite/thumbnails/v1/assets?assetIds={ids}&size=150x150&format=Png` | Asset thumbnails. Asset `121969`: HTTP 200. |
 | GET | `https://inventory.octane.wtf/v1/users/{userId}/assets/collectibles?sortOrder=Desc&limit=100` | Collectibles on the inventory service. User `1`: HTTP 403; inventory permissions may apply. |
 | GET | `https://inventory.octane.wtf/v2/users/{userId}/inventory?assetTypes={types}` | Inventory by asset type on the inventory service. User `1`, asset type `8`: HTTP 403; inventory permissions may apply. |
-| POST | `https://octane.wtf/apisite/friends/v1/users/{userId}/unfriend` | Remove a friend. Nexus sends JSON `targetUserId`; state-changing and **not tested**. Requires appropriate authentication/authorization. |
+| POST | `https://octane.wtf/apisite/friends/v1/users/{userId}/unfriend` | Remove a friend. A client sends JSON `targetUserId`; state-changing and **not tested**. Requires appropriate authentication/authorization. |
 
 ### Additional service hosts
 
@@ -257,7 +257,7 @@ curl 'https://octomons.wtf/api/players/v1/playersearch?searchstring=test'
 
 ### Catalog page data (not a JSON API)
 
-`GET https://octomons.wtf/catalog` returns HTML containing a `var item_details` object. The [Kerosene client](https://github.com/wozers0/kerosene/blob/main/shared/values.js) parses this embedded data for item values and documents its observed array indexes, including name (0), best price (5), RAP (8), value (16), demand (17), trend (18), projected (19), rare (21), thumbnail (23), item type (24), and ID (25). This is an implementation detail, not a stable public API; check the current page and scripts before relying on it.
+`GET https://octomons.wtf/catalog` returns HTML containing a `var item_details` object. Observed array indexes include including name (0), best price (5), RAP (8), value (16), demand (17), trend (18), projected (19), rare (21), thumbnail (23), item type (24), and ID (25). This is an implementation detail, not a stable public API; check the current page and scripts before relying on it.
 
 ---
 
@@ -436,12 +436,10 @@ This example is based on a third-party client and **has not been tested in Octan
 
 ---
 
-## Sources & Limitations
+## Limitations
 
-- [Nexus browser extension](https://github.com/zykieboi/nexus), a third-party client.
 - User-supplied browser resource log from a signed-in Octane session (paths only; methods and statuses not included).
 - [Octane](https://octane.wtf/) and [Octomon's](https://octomons.wtf/) public pages and their browser scripts. A follow-up scan covered 90 reachable Octomon's page paths, their inline scripts, and 20 referenced non-library scripts; it does not cover every page or authenticated workflow.
-- [Kerosene Octane API helpers](https://github.com/wozers0/kerosene/blob/main/shared/settings.js), [avatar client](https://github.com/wozers0/kerosene/blob/main/content/avatar-main.js), and [Octomon's value parser](https://github.com/wozers0/kerosene/blob/main/shared/values.js). These are third-party implementations, not official API documentation.
 - Octane's main site redirects unauthenticated visitors to login. Authenticated-only pages and their network traffic were not inspected; therefore additional endpoints likely exist.
 - Respect the sites' terms, privacy settings, and rate limits. Do not share credentials or make state-changing requests without authorization.
 
@@ -449,7 +447,7 @@ This example is based on a third-party client and **has not been tested in Octan
 
 <div align="center">
 
-**BUILT FOR THE OCTANE COMMUNITY**
+**OCTANE API REFERENCE**
 
 *Not affiliated with Octane, Octomon’s, or Roblox.*
 
@@ -459,9 +457,9 @@ This example is based on a third-party client and **has not been tested in Octan
 
 ---
 
-## Community Endpoint Index
+## Additional Octane Endpoints
 
-This index is transcribed from an **unofficial reference supplied by a user**, attributed in the supplied text to H█I. Methods and parameter notes are claims from that reference, not independently verified here. The original document says the API list is incomplete and many responses were not captured.
+This section lists additional unofficial endpoint paths. Methods and parameter notes have not all been independently verified. The list is incomplete and many responses were not captured.
 
 > **Host ambiguity:** The supplied reference says its base URL is `https://octane.wtf/`, but many paths such as `/v1/users/{userId}/friends` appear under service-specific sections without a host. Other captures show service subdomains, and the reference explicitly names `privatemessages.octane.wtf` for one section. Do **not** assume that every relative path works on the root host or substitute a service hostname without confirming the original request. Paths below preserve what the reference provides. Where an explicit `/apisite/` or legacy root path is given, it is reproduced as supplied, but still needs testing.
 
@@ -1049,49 +1047,49 @@ GET https://octane.wtf/users/favorites/list-json?assetTypeId=9&itemsPerPage=24&p
 ```
 
 
-#### Additional endpoints found in Nexus · `https://octane.wtf/apisite/economy/v2/assets/{assetId}/details`
+#### Additional endpoints · `https://octane.wtf/apisite/economy/v2/assets/{assetId}/details`
 
 ```text
 GET https://octane.wtf/apisite/economy/v2/assets/{assetId}/details
 ```
 
 
-#### Additional endpoints found in Nexus · `https://octane.wtf/apisite/games/v1/games/list?keyword={keyword}&maxRows=25`
+#### Additional endpoints · `https://octane.wtf/apisite/games/v1/games/list?keyword={keyword}&maxRows=25`
 
 ```text
 GET https://octane.wtf/apisite/games/v1/games/list?keyword={keyword}&maxRows=25
 ```
 
 
-#### Additional endpoints found in Nexus · `https://octane.wtf/apisite/games/v1/games/multiget-playability-status?universeIds={ids}`
+#### Additional endpoints · `https://octane.wtf/apisite/games/v1/games/multiget-playability-status?universeIds={ids}`
 
 ```text
 GET https://octane.wtf/apisite/games/v1/games/multiget-playability-status?universeIds={ids}
 ```
 
 
-#### Additional endpoints found in Nexus · `https://octane.wtf/apisite/thumbnails/v1/assets?assetIds={ids}&size=150x150&format=Png`
+#### Additional endpoints · `https://octane.wtf/apisite/thumbnails/v1/assets?assetIds={ids}&size=150x150&format=Png`
 
 ```text
 GET https://octane.wtf/apisite/thumbnails/v1/assets?assetIds={ids}&size=150x150&format=Png
 ```
 
 
-#### Additional endpoints found in Nexus · `https://inventory.octane.wtf/v1/users/{userId}/assets/collectibles?sortOrder=Desc&limit=100`
+#### Additional endpoints · `https://inventory.octane.wtf/v1/users/{userId}/assets/collectibles?sortOrder=Desc&limit=100`
 
 ```text
 GET https://inventory.octane.wtf/v1/users/{userId}/assets/collectibles?sortOrder=Desc&limit=100
 ```
 
 
-#### Additional endpoints found in Nexus · `https://inventory.octane.wtf/v2/users/{userId}/inventory?assetTypes={types}`
+#### Additional endpoints · `https://inventory.octane.wtf/v2/users/{userId}/inventory?assetTypes={types}`
 
 ```text
 GET https://inventory.octane.wtf/v2/users/{userId}/inventory?assetTypes={types}
 ```
 
 
-#### Additional endpoints found in Nexus · `https://octane.wtf/apisite/friends/v1/users/{userId}/unfriend`
+#### Additional endpoints · `https://octane.wtf/apisite/friends/v1/users/{userId}/unfriend`
 
 ```text
 POST https://octane.wtf/apisite/friends/v1/users/{userId}/unfriend
@@ -1547,7 +1545,7 @@ Check the request body, authentication, CSRF requirements, and permissions befor
 *99 endpoint entries in this section, including separate host variants.*
 
 
-### Community reference
+### Additional endpoint examples
 
 
 #### Account information and promotion channels · `/v1/description`
