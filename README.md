@@ -120,6 +120,37 @@ These use `https://octane.wtf` directly, **without** `/apisite`:
 | GET | `/users/{userId}` | Legacy user data, according to the client. |
 | GET | `/users/favorites/list-json?assetTypeId=9&itemsPerPage=24&pageNumber=1&userId={userId}` | User favorites; example parameters from the client. |
 
+### Additional service hosts
+
+The following full URLs were observed in a user-supplied browser resource log. **Methods, query parameters, status codes, and response bodies were not captured.** A recorded request may have failed; an apparent counterpart under `/apisite` does not establish identical behavior. Descriptions are inferred from path names.
+
+| Host | Path | Apparent purpose |
+|---|---|---|
+| `friends.octane.wtf` | `/v1/users/{userId}/friends` | User friends. |
+| `games.octane.wtf` | `/v1/games/list` | Game list. |
+| `games.octane.wtf` | `/v1/games/multiget-place-details` | Multiple place details. |
+| `games.octane.wtf` | `/v1/games/sorts` | Game sorts. |
+| `metrics.octane.wtf` | `/v1/performance/send-measurement` | Performance measurement. |
+| `metrics.octane.wtf` | `/v1/thumbnails/metadata` | Thumbnail metrics metadata. |
+| `notifications.octane.wtf` | `/v2/notifications/get-settings` | Notification settings. |
+| `presence.octane.wtf` | `/v1/presence/register-app-presence` | App presence registration. |
+| `presence.octane.wtf` | `/v1/presence/users` | User presence. |
+| `privatemessages.octane.wtf` | `/v1/announcements/metadata` | Announcement metadata. |
+| `privatemessages.octane.wtf` | `/v1/messages` | Private messages. |
+| `realtime.octane.wtf` | `/notifications/negotiate` | Real-time notifications negotiation. |
+| `realtime.octane.wtf` | `/notifications/start` | Start real-time notifications. |
+| `thumbnails.octane.wtf` | `/v1/games/icons` | Game icon thumbnails. |
+| `thumbnails.octane.wtf` | `/v1/users/avatar-headshot` | Avatar headshots. |
+| `trades.octane.wtf` | `/v1/trades/inbound` | Inbound trades. |
+
+Prefix each host with `https://` and append its path. Do not assume these host-specific URLs accept the same parameters, authentication, or methods as similarly named paths on other hosts.
+
+### Inventory service on a separate host
+
+| Method | URL | Description |
+|---|---|---|
+| GET | `https://inventory.octane.wtf/v2/assets/{assetId}/owners` | Asset owners; tested with asset ID `121969` and received HTTP 200. A user-provided third-party changelog reports pagination via `nextPageCursor` and fields including `owner`, `serialNumber`, `created`, and `updated`; those fields and pagination have not been independently verified. |
+
 ### Additional account and privacy paths
 
 These paths use `https://octane.wtf` directly, **without** `/apisite`. They were captured in a signed-in browser's Fetch/XHR resource log. Their methods, status codes, query parameters, responses, and authentication requirements were not captured; descriptions are inferred from the paths. Some may read or modify sensitive settings, so do not assume they are public or safe to change.
