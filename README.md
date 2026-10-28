@@ -16,6 +16,8 @@
 
 ---
 
+> **Studio use cases:** See the [Studio & Game Guide](#studio--game-guide) for practical Lua examples. [API Examples](API_EXAMPLES.md) contains additional endpoint request templates.
+
 ## Start here
 
 | I want to… | Go to |
@@ -23,6 +25,7 @@
 | Find users, inventories, groups, or trades | [Octane API](#octane-api) |
 | Access item data, prices, or player search | [Octomon's API](#octomons-api) |
 | Use an endpoint inside a game | [Studio & Game Guide](#studio--game-guide) |
+| Explore more community-captured paths | [Community Endpoint Index](COMMUNITY_ENDPOINTS.md) |
 
 > [!IMPORTANT]
 > This is an **unofficial, incomplete** reference. Some endpoints were discovered in client code rather than tested directly. They can change, require authentication, or stop working without notice. Octomon's is a separate site from Octane.
@@ -30,6 +33,8 @@
 ---
 
 ## Octane API
+
+**More endpoints:** See [Community Endpoint Index](COMMUNITY_ENDPOINTS.md) for the user-supplied unofficial reference, including chat, badges, catalog, legacy paths, and more. Some original paths lack confirmed hosts.
 
 > User profiles, inventories, avatars, groups, games, and trades.
 
@@ -207,6 +212,7 @@ The following paths were found in Octomon's own browser scripts. HTTP results be
 | GET | `/api/itemthumbs/v2/thumbssm` | Small item thumbnails used by global search. | 200 |
 | GET | `/api/market/v2/dealactivity` | Market deal activity used by the deals page. | 200 |
 | GET | `/api/market/v2/saleactivity` | Market sale activity. | 200 |
+| GET | `/api/tradeads/v1/getrecentads` | Recent trade ads. The trades page describes these as ads created in the past three minutes. | 200 |
 | GET | `/api/players/v1/playersearch?searchstring={query}` | Search players. | 200 with `test` |
 | GET | `/api/players/v1/playerassets/{userId}` | Live player assets. | 200 with ID 1 |
 | GET | `/thumbs/avatar?userIds={ids}&size=150x150` | Full avatar thumbnails; comma-separated user IDs. Client also uses `420x420`. | 200 with ID 1 |
@@ -308,7 +314,90 @@ end
 
 The player array format was observed with `searchstring=test`; responses may change. For UI, have the server send only the necessary results to players using a `RemoteEvent` or `RemoteFunction`. Validate and rate-limit requests on the server, cache results where practical, and never let clients choose arbitrary URLs.
 
-### 03 — Send a POST request
+### 03 — Display a player's friends
+
+**Use case:** Build a friends panel or show which friends are online. Put this in a server Script and replace `userId` with the Octane user ID you want to look up. The sample prints the results; you can send the fields you need to a UI using a RemoteEvent.
+
+```lua
+local HttpService = game:GetService("HttpService")
+local userId = 1
+local url = "https://octane.wtf/apisite/friends/v1/users/"
+    .. tostring(userId) .. "/friends"
+
+local ok, response = pcall(function()
+    return HttpService:JSONDecode(HttpService:GetAsync(url))
+end)
+
+if not ok then
+    warn("Could not load friends: " .. tostring(response))
+    return
+end
+
+for _, friend in ipairs(response.data or {}) do
+    print(friend.displayName or friend.name, "Online:", friend.isOnline)
+end
+```
+
+A successful request may still return an empty list, and the `isOnline` field may not indicate exactly where the user is. Check the response in your environment before building around it.
+
+### 04 — Show limited item names
+
+**Use case:** Make a trading-information board that lists items tracked by Octomon's. This example reads the item names; it does not make trades or purchase anything.
+
+```lua
+local HttpService = game:GetService("HttpService")
+local url = "https://octomons.wtf/api/items/v3/itemdetails"
+
+local ok, response = pcall(function()
+    return HttpService:JSONDecode(HttpService:GetAsync(url))
+end)
+
+if not ok then
+    warn("Could not load items: " .. tostring(response))
+    return
+end
+
+if not response.success or type(response.assets) ~= "table" then
+    warn("Unexpected item response")
+    return
+end
+
+for itemId, details in pairs(response.assets) do
+    -- The first element was the item name in the response checked.
+    print("Item:", itemId, "Name:", details[1])
+end
+```
+
+The endpoint returned an `assets` object keyed by item ID, with the item name first in each array when checked. Other array positions aren't documented here; verify them before using them as prices or values. Cache the response rather than fetching it separately for every player.
+
+### 05 — Get an avatar headshot URL
+
+**Use case:** Look up a headshot for a player directory or profile panel. This prints the returned URL; whether an Octane `ImageLabel` can display an external URL depends on the revival's client and content rules.
+
+```lua
+local HttpService = game:GetService("HttpService")
+local userId = 1
+local url = "https://octane.wtf/apisite/thumbnails/v1/users/avatar-headshot?userIds="
+    .. tostring(userId) .. "&size=48x48&format=png"
+
+local ok, response = pcall(function()
+    return HttpService:JSONDecode(HttpService:GetAsync(url))
+end)
+
+if not ok then
+    warn("Could not load headshot: " .. tostring(response))
+    return
+end
+
+local thumbnail = response.data and response.data[1]
+if thumbnail and thumbnail.state == "Completed" and thumbnail.imageUrl then
+    print("Headshot URL:", thumbnail.imageUrl)
+else
+    warn("Headshot isn't ready or wasn't returned")
+end
+```
+
+### 06 — Send a POST request
 
 For a public JSON POST endpoint that the game server is authorized to use, encode the body with `HttpService:JSONEncode` and use `PostAsync` with `Enum.HttpContentType.ApplicationJson`:
 
@@ -336,7 +425,7 @@ This example is based on a third-party client and **has not been tested in Octan
 ## Sources & Limitations
 
 - User-supplied browser resource log from a signed-in Octane session (paths only; methods and statuses not included).
-- [Octane](https://octane.wtf/) and [Octomon's](https://octomons.wtf/) public pages and their browser scripts. A follow-up scan covered 45 reachable Octomon's pages and the non-library scripts they referenced; it does not cover every page or authenticated workflow.
+- [Octane](https://octane.wtf/) and [Octomon's](https://octomons.wtf/) public pages and their browser scripts. A follow-up scan covered 90 reachable Octomon's page paths, their inline scripts, and 20 referenced non-library scripts; it does not cover every page or authenticated workflow.
 - [Kerosene Octane API helpers](https://github.com/wozers0/kerosene/blob/main/shared/settings.js), [avatar client](https://github.com/wozers0/kerosene/blob/main/content/avatar-main.js), and [Octomon's value parser](https://github.com/wozers0/kerosene/blob/main/shared/values.js). These are third-party implementations, not official API documentation.
 - Octane's main site redirects unauthenticated visitors to login. Authenticated-only pages and their network traffic were not inspected; therefore additional endpoints likely exist.
 - Respect the sites' terms, privacy settings, and rate limits. Do not share credentials or make state-changing requests without authorization.
