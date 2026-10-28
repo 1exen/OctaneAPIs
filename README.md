@@ -1,14 +1,16 @@
 <div align="center">
 
-# ⚡ OCTANE APIs
+# OCTANE / API REFERENCE
 
-### The community-made API reference for Octane & Octomon's
+### A community-made developer reference
 
-Find endpoints, explore trading data, and build integrations for your games.
+**Endpoints. Trading data. Game integrations.**
 
 [**Explore Octane**](#octane-api) &nbsp; · &nbsp; [**Explore Octomon's**](#octomons-api) &nbsp; · &nbsp; [**Studio Guide**](#studio--game-guide)
 
-`UNOFFICIAL` &nbsp; `COMMUNITY-MADE` &nbsp; `LAST CHECKED · OCT 2026`
+`OCTANE` &nbsp; / &nbsp; `OCTOMON’S` &nbsp; / &nbsp; `STUDIO`
+
+<sub>UNOFFICIAL COMMUNITY DOCUMENTATION · LAST CHECKED OCTOBER 2026</sub>
 
 </div>
 
@@ -18,9 +20,9 @@ Find endpoints, explore trading data, and build integrations for your games.
 
 | I want to… | Go to |
 |:---|:---|
-| Find users, inventories, groups, or trades | [Octane API →](#octane-api) |
-| Access item data, prices, or player search | [Octomon's API →](#octomons-api) |
-| Use an endpoint inside a game | [Studio & Game Guide →](#studio--game-guide) |
+| Find users, inventories, groups, or trades | [Octane API](#octane-api) |
+| Access item data, prices, or player search | [Octomon's API](#octomons-api) |
+| Use an endpoint inside a game | [Studio & Game Guide](#studio--game-guide) |
 
 > [!IMPORTANT]
 > This is an **unofficial, incomplete** reference. Some endpoints were discovered in client code rather than tested directly. They can change, require authentication, or stop working without notice. Octomon's is a separate site from Octane.
@@ -77,7 +79,7 @@ Append the paths below to the base URL. Parameters such as `{userId}` are placeh
 | GET | `/groups/v1/groups/{groupId}/roles` | Group roles. |
 | GET | `/groups/v1/groups/{groupId}/users?limit=100&sortOrder=Desc` | Group members; supports `cursor`. |
 | GET | `/groups/v1/groups/{groupId}/audit-log?limit=100&sortOrder=Desc` | Group audit log; may require permissions. |
-| DELETE | `/groups/v1/groups/{groupId}/users/{userId}` | Remove a group member; requires appropriate permissions. ⚠️ **Modifies data.** |
+| DELETE | `/groups/v1/groups/{groupId}/users/{userId}` | Remove a group member; requires appropriate permissions. **Modifies data.** |
 
 ### Games, economy and trades
 
@@ -250,10 +252,10 @@ This example is based on a third-party client and **has not been tested in Octan
 
 <div align="center">
 
-**Built for the Octane community** ⚡
+**BUILT FOR THE OCTANE COMMUNITY**
 
 *Not affiliated with Octane, Octomon’s, or Roblox.*
 
-[Back to top ↑](#-octane-apis)
+[Back to top](#octane--api-reference)
 
 </div>
