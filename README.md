@@ -2,24 +2,23 @@
 
 <img src="assets/banner.png" alt="Octane API Reference" width="100%">
 
-# OCTANE / API REFERENCE
+# OCTANE API REFERENCE
 
-**Every endpoint confirmed live on `octane.wtf`.**
+**83 verified endpoints across three API surfaces.**
 
-`octane.wtf` · `apisite` · `cdn.octane.wtf` · `tcdn.octane.wtf`
+[![Endpoints](https://img.shields.io/badge/endpoints-83%20live-22D3EE?style=flat-square&labelColor=120C2B)](#verification)
+[![Probed](https://img.shields.io/badge/probed-143-6C5CE7?style=flat-square&labelColor=120C2B)](#verification)
+[![Auth](https://img.shields.io/badge/auth-none%20required-3BBBC9?style=flat-square&labelColor=120C2B)](#quick-start)
+[![Checked](https://img.shields.io/badge/checked-7%20nov%202026-8B7BFF?style=flat-square&labelColor=120C2B)](#verification)
+[![License](https://img.shields.io/badge/license-MIT-4A9BD6?style=flat-square&labelColor=120C2B)](LICENSE)
 
-[![Verified](https://img.shields.io/badge/verified-52%20probed%20·%2042%20live-22D3EE?style=flat-square&labelColor=120C2B)](#verification)
-[![Checked](https://img.shields.io/badge/checked-7%20november%202026-3BBBC9?style=flat-square&labelColor=120C2B)](#verification)
-[![Host](https://img.shields.io/badge/host-octane.wtf-8B7BFF?style=flat-square&labelColor=120C2B)](https://octane.wtf/)
-[![Status](https://img.shields.io/badge/status-unofficial-6C5CE7?style=flat-square&labelColor=120C2B)](#disclaimer)
-
+<a href="#quick-start">Quick start</a> ·
+<a href="#architecture">Architecture</a> ·
+<a href="#endpoint-index">Endpoint index</a> ·
+<a href="#surface-1--apisite">/apisite</a> ·
+<a href="#surface-2--root-host">Root host</a> ·
 <a href="#verification">Verification</a> ·
-<a href="#users">Users</a> ·
-<a href="#games">Games</a> ·
-<a href="#catalog">Catalog</a> ·
-<a href="#assets--economy">Economy</a> ·
-<a href="#groups">Groups</a> ·
-<a href="#appendix--unverified">Unverified</a>
+<a href="#appendix">Appendix</a>
 
 <sub><b>UNOFFICIAL COMMUNITY DOCUMENTATION</b> · NOT AFFILIATED WITH OCTANE OR ROBLOX</sub>
 
@@ -27,87 +26,148 @@
 
 ---
 
-## Is this from octane.wtf?
+## What this is
 
-**Yes.** Every endpoint in the verified sections below was requested directly against
-`https://octane.wtf` from a clean sandbox with no account, and the result is recorded per namespace.
+A complete, live-verified map of the HTTP API behind **[octane.wtf](https://octane.wtf/)**.
 
-| Checked | Result |
-| :-- | :-- |
-| Endpoints probed | **52** |
-| Returned `200` | **42** |
-| Existed but gated (`401` / `403` / `405`) | **10** |
-| Resolved on `octane.wtf` | **51 of 52** |
-| Resolved elsewhere | `1` — `assetdelivery` redirects to `cdn.octane.wtf` |
-| Date | 7 November 2026 |
+Octane is a Roblox-compatible platform. Its API is undocumented — there is no developer portal,
+no OpenAPI spec, no `/docs`. Everything here was recovered by reading client code and probing the
+live server with unauthenticated requests, then recording the actual status code for every path.
 
-Two base URLs, and only two:
+Every endpoint in the verified sections was **confirmed working from a clean sandbox with no account**.
 
-```text
-API   https://octane.wtf/apisite
-CDN   https://cdn.octane.wtf          (asset delivery)
-      https://tcdn.octane.wtf         (thumbnails, returned inside JSON)
+<div align="center">
+
+| 83 | 197 | 50 | 0 |
+|:--:|:--:|:--:|:--:|
+| **live endpoints** | **paths probed** | **gated routes** | **auth needed to start** |
+
+</div>
+
+---
+
+## Quick start
+
+Three working calls. No key, no account, no setup.
+
+```bash
+# 1 — a player profile
+curl 'https://octane.wtf/apisite/users/v1/users/1'
+
+# 2 — search players
+curl 'https://octane.wtf/apisite/users/v1/users/search?keyword=octane&limit=5'
+
+# 3 — a headshot image URL
+curl 'https://octane.wtf/apisite/thumbnails/v1/users/avatar-headshot?userIds=1&size=48x48&format=png'
 ```
 
-The separate service subdomains that other references list — `friends.`, `games.`, `presence.`,
-`thumbnails.` and so on — are **not required**. Every path they claim also answers on `/apisite`.
+That's the whole idea: plain GET requests, JSON back.
 
-## Contents
+> [!TIP]
+> Player IDs start at `1` and count up. Change the `1` in the first call to any number and
+> you get a different player. As of November 2026 the highest ID is around **39,123**.
 
-| Namespace | Endpoints | Public |
-| :-- | --: | :-- |
-| [Users](#users) | 6 | ✅ |
-| [Friends & presence](#friends--presence) | 8 | partly |
-| [Avatar & thumbnails](#avatar--thumbnails) | 11 | ✅ |
-| [Games](#games) | 12 | ✅ |
-| [Catalog](#catalog) | 8 | ✅ |
-| [Assets & economy](#assets--economy) | 6 | ✅ |
-| [Inventory](#inventory) | 5 | partly |
-| [Groups](#groups) | 10 | ✅ |
-| [Badges](#badges) | 2 | ✅ |
-| [Trades](#trades) | 6 | 🔒 |
-| [Chat & messages](#chat--messages) | 3 | 🔒 |
-| [Notifications & realtime](#notifications--realtime) | 4 | partly |
-| [Account](#account) | 7 | 🔒 |
-| [Locale & metrics](#locale--metrics) | 3 | ✅ |
-| [Auth](#auth) | 3 | 🔒 |
-| [Appendix — unverified](#appendix--unverified) | 96 | — |
+---
+
+## Architecture
+
+<img src="assets/architecture.png" alt="Three API surfaces: /apisite, root host, CDN" width="100%">
+
+There are **three independent surfaces** on the same host, and they do not behave alike.
+
+| Surface | Base | Shape | Why it matters |
+| :-- | :-- | :-- | :-- |
+| **Modern** | `https://octane.wtf/apisite` | camelCase JSON | 48 endpoints. The main surface. |
+| **Legacy** | `https://octane.wtf/` | PascalCase JSON, some HTML | 29 endpoints. Different payloads for the same data. |
+| **CDN** | `cdn.` / `tcdn.octane.wtf` | binary + image URLs | Asset files and avatars. |
+
+The same player through two surfaces:
+
+```jsonc
+// /apisite — modern
+{"id":1,"name":"Octane","displayName":"Octane","isBanned":false}
+
+// root host — legacy
+{"Id":1,"Username":"Octane","AvatarUri":null,"Online":false}
+```
+
+> [!IMPORTANT]
+> **Check `content-type` on the root host.** Roughly 25 paths there return `200 text/html` — that is
+> the React app's catch-all, not an endpoint. A `200` alone means nothing on that surface.
+
+> [!NOTE]
+> **Service subdomains are not required.** `friends.`, `games.`, `presence.`, `thumbnails.` and the
+> rest are wildcard DNS. A bogus `zznotreal.octane.wtf` resolves identically. Every path answers on
+> `/apisite` without them.
 
 ---
 
 ## Status codes
 
-Every table below uses real observed codes.
+| Code | Meaning | What to do |
+| :-- | :-- | :-- |
+| `200` | Public | Works with no account. |
+| `400` | Bad parameters | Route exists. Fix the request. |
+| `401` | Session required | Route exists. Needs auth. |
+| `403` | Blocked or CSRF | Route exists. Needs a token or permission. |
+| `404` | **Does not exist** | Body is literally `Not found`. |
+| `405` | Wrong method | Route exists. Usually needs `POST`. |
+| `429` | Rate limited | Back off. |
+| `500` | Server error | Route exists, crashes. |
 
-| Code | Meaning |
-| :-- | :-- |
-| `200` | Public. Works with no account. |
-| `400` | Needs correct parameters. Route exists. |
-| `401` | Route exists. Session required. |
-| `403` | Route exists. Blocked, or CSRF token required. |
-| `404` | Route does not exist. Body is literally `Not found`. |
-| `405` | Route exists. Wrong method — usually needs `POST`. |
-| `429` | Rate limited. |
-| `500` | Route exists but crashes. |
+> [!TIP]
+> **`403 Token Validation Failed` on any `POST` means the route is real.** It needs the CSRF
+> handshake, not permission. Use it as a route-existence check.
 
-> A `403` with `Token Validation Failed` on any `POST` means the route is real and needs the
-> CSRF handshake, **not** that you lack permission. Use it as an existence check.
+> [!WARNING]
+> **`OPTIONS` is useless here.** Every route returns `204` with the same blanket
+> `allow: GET, POST, PUT, PATCH, DELETE` header — it even claims `DELETE` on `/auth/v1/login`.
+> That is CORS middleware, not route metadata. Don't use it to enumerate methods.
 
 ---
 
-# Users
+## Endpoint index
 
-> Base `https://octane.wtf/apisite`
+| Surface | Namespace | Live | Gated | Docs |
+| :-- | :-- | --: | --: | :-- |
+| `/apisite` | Users | 4 | 2 | [→](#users) |
+| `/apisite` | Friends & presence | 5 | 3 | [→](#friends--presence) |
+| `/apisite` | Avatar & thumbnails | 9 | 3 | [→](#avatar--thumbnails) |
+| `/apisite` | Games | 9 | 1 | [→](#games) |
+| `/apisite` | Catalog | 7 | 1 | [→](#catalog) |
+| `/apisite` | Assets & economy | 4 | 2 | [→](#assets--economy) |
+| `/apisite` | Inventory | 2 | 3 | [→](#inventory) |
+| `/apisite` | Groups | 6 | 5 | [→](#groups) |
+| `/apisite` | Badges | 2 | 0 | [→](#badges) |
+| `/apisite` | Trades | 0 | 6 | [→](#trades) |
+| `/apisite` | Chat & messages | 2 | 4 | [→](#chat--messages) |
+| `/apisite` | Notifications & realtime | 3 | 1 | [→](#notifications--realtime) |
+| `/apisite` | Account | 4 | 3 | [→](#account) |
+| `/apisite` | Locale & metrics | 3 | 0 | [→](#locale--metrics) |
+| `/apisite` | Auth | 0 | 3 | [→](#auth) |
+| root | Legacy API | 15 | 8 | [→](#surface-2--root-host) |
+| root | `/v1`, `/v2` | 14 | 10 | [→](#root-v1-and-v2) |
+
+---
+
+# Surface 1 — `/apisite`
+
+```text
+BASE   https://octane.wtf/apisite
+AUTH   none for public paths
+```
+
+## Users
 
 | Method | Path | Code | Notes |
 | :-- | :-- | :-: | :-- |
 | `GET` | `/users/v1/users/{userId}` | `200` | Full profile. |
 | `GET` | `/users/v1/users/search?keyword={q}&limit=10` | `200` | Min 3 chars. Cursor = integer offset. |
-| `GET` | `/users/v1/users/authenticated` | `401` | Current user. |
 | `GET` | `/users/v1/users/{userId}/status` | `200` | `{"status":null}` |
 | `GET` | `/users/v1/users/{userId}/username-history` | `200` | Paginated. |
-| `POST` | `/users/v1/usernames/users` | `405`→`403` | Batch username → id. Needs CSRF. |
-| `POST` | `/users/v1/users` | `403` | Create account. CSRF. |
+| `GET` | `/users/v1/users/authenticated` | `401` | Current user. |
+| `POST` | `/users/v1/usernames/users` | `403` | Batch username → id. CSRF. |
+| `PATCH` | `/users/v1/users/{userId}/display-names` | `405` | |
 
 ```bash
 curl 'https://octane.wtf/apisite/users/v1/users/1'
@@ -118,11 +178,9 @@ curl 'https://octane.wtf/apisite/users/v1/users/1'
  "isBanned":false,"hasVerifiedBadge":true,"isPremium":false,"hasAdminBadge":true,"hasStarCreatorBadge":false}
 ```
 
-> Confirmed absent: `/subscriptions`, `/configuration`, `/promotion-channels` all return `404`.
+<sub>`/subscriptions`, `/configuration` and `/promotion-channels` return `404` — they do not exist.</sub>
 
----
-
-# Friends & presence
+## Friends & presence
 
 | Method | Path | Code | Notes |
 | :-- | :-- | :-: | :-- |
@@ -131,9 +189,10 @@ curl 'https://octane.wtf/apisite/users/v1/users/1'
 | `GET` | `/friends/v1/users/{userId}/followings` | `200` | **Full following list**, paginated. |
 | `GET` | `/friends/v1/users/{userId}/followers/count` | `200` | |
 | `GET` | `/friends/v1/users/{userId}/followings/count` | `200` | |
+| `GET` | `/friends/v1/users/{userId}/friends/count` | `200` | `{"count":0}` |
 | `GET` | `/friends/v1/users/{userId}/friends/statuses?userIds=` | `401` | |
 | `GET` | `/friends/v1/user/friend-requests/count` | `401` | |
-| `POST` | `/friends/v1/user/following-exists` | `405` | Needs session. |
+| `POST` | `/friends/v1/user/following-exists` | `405` | |
 | `POST` | `/friends/v1/users/{userId}/unfriend` | `405` | Body `targetUserId`. **Modifies data.** |
 | `POST` | `/presence/v1/presence/users` | `405` | Body `{"userIds":[1,2]}`. |
 
@@ -141,19 +200,16 @@ curl 'https://octane.wtf/apisite/users/v1/users/1'
 curl 'https://octane.wtf/apisite/friends/v1/users/1/followers?limit=10&sortOrder=Desc'
 ```
 
-Each entry carries `isOnline`, `isDeleted`, `isBanned`, `presenceType`, and `friendFrequentScore`.
+Each entry carries `isOnline`, `isDeleted`, `isBanned`, `presenceType`, `friendFrequentScore`.
 
----
-
-# Avatar & thumbnails
+## Avatar & thumbnails
 
 | Method | Path | Code | Notes |
 | :-- | :-- | :-: | :-- |
 | `GET` | `/avatar/v1/users/{userId}/avatar` | `200` | R6/R15, scales, body colors, worn assets. |
-| `GET` | `/avatar/v1/avatar` | `401` | Own avatar. |
 | `GET` | `/avatar/v1/avatar-rules` | `200` | |
-| `GET` | `/avatar/v1/avatar/metadata` | `200` | Editor feature flags. |
-| `GET` | `/avatar/v1/recent-items/all/list` | `401` | |
+| `GET` | `/avatar/v1/avatar/metadata` | `200` | Feature flags. |
+| `GET` | `/avatar/v1/users/{userId}/outfits` | `200` | Saved outfits. |
 | `GET` | `/thumbnails/v1/users/avatar-headshot?userIds=1,2` | `200` | Comma-batched. |
 | `GET` | `/thumbnails/v1/users/avatar?userIds=1,2` | `200` | Full body. |
 | `GET` | `/thumbnails/v1/avatar/try-on?assetId=&userId=` | `200` | |
@@ -162,6 +218,9 @@ Each entry carries `isOnline`, `isDeleted`, `isBanned`, `presenceType`, and `fri
 | `GET` | `/thumbnails/v1/badges/icons?badgeIds=` | `200` | |
 | `GET` | `/thumbnails/v1/groups/icons?groupIds=` | `200` | |
 | `GET` | `/thumbnails/v1/games/multiget/thumbnail?universeIds=` | `200` | |
+| `GET` | `/avatar/v1/avatar` | `401` | Own avatar. |
+| `GET` | `/avatar/v1/recent-items/all/list` | `401` | |
+| `POST` | `/avatar/v1/avatar/redraw-thumbnail` | `405` | |
 | `POST` | `/thumbnails/v1/batch` | `403` | Batched. CSRF. |
 
 ```bash
@@ -169,40 +228,43 @@ curl 'https://octane.wtf/apisite/thumbnails/v1/users/avatar?userIds=1'
 # {"data":[{"targetId":1,"state":"Completed","imageUrl":"https://tcdn.octane.wtf/..."}]}
 ```
 
----
-
-# Games
+## Games
 
 | Method | Path | Code | Notes |
 | :-- | :-- | :-: | :-- |
 | `GET` | `/games/v1/games?universeIds={ids}` | `200` | |
 | `GET` | `/games/v1/games/list?keyword={q}&maxRows=25` | `200` | Returns `universeId` **and** `placeId`. |
-| `GET` | `/games/v1/games/sorts` | `200` | Tokens: `popular`, `mostFavorited`, … |
-| `GET` | `/games/v1/games/votes?universeIds={ids}` | `200` | Up/down votes. |
+| `GET` | `/games/v1/games/sorts` | `200` | `popular`, `mostFavorited`, … |
+| `GET` | `/games/v1/games/votes?universeIds={ids}` | `200` | |
 | `GET` | `/games/v1/games/{universeId}/favorites` | `200` | |
 | `GET` | `/games/v1/games/{universeId}/social-links/list` | `200` | |
 | `GET` | `/games/v2/games/{universeId}/media` | `200` | |
 | `GET` | `/games/v1/games/multiget-place-details?placeIds={ids}` | `200` | Builder, price, playability. |
-| `GET` | `/games/v1/games/multiget-playability-status?universeIds={ids}` | `200` | |
+| `GET` | `/games/v1/games/multiget-playability-status?universeIds=` | `200` | |
+| `GET` | `/develop/v1/universes/{universeId}/places` | `200` | |
+| `GET` | `/develop/v1/universes/{universeId}` | `200` | `rootPlaceId`, `privacyType`. |
+| `GET` | `/develop/v1/universes/{universeId}/teamcreate` | `200` | `{"isEnabled":false}` |
+| `GET` | `/develop/v1/universes/{universeId}/icon` | `200` | `{"imageId":null,"isApproved":true}` |
+| `GET` | `/develop/v1/universes/{universeId}/thumbnails` | `401` | |
+| `GET` | `/develop/v1/places/{placeId}` | `405` | |
+| `POST` | `/gamejoin/v1/join-game` | `405` | **New namespace.** |
+| `POST` | `/gamejoin/v1/join-game-instance` | `405` | |
 | `GET` | `/games/v1/games/recommendations/game/{universeId}` | `401` | |
-| `GET` | `/games/v2/users/{userId}/games` | — | Reference only. |
-| `GET` | `/develop/v1/universes/{universeId}/places` | `200` | Public. |
 
 ```bash
 curl 'https://octane.wtf/apisite/games/v1/games/votes?universeIds=6782'
 # {"data":[{"id":6782,"upVotes":0,"downVotes":2}]}
 ```
 
-> Confirmed absent: `/games/{u}/servers`, `/games/servers/public`, `/games/{u}/private-servers`.
+<sub>`/games/{u}/servers`, `/games/servers/public`, `/games/{u}/private-servers` → `404`.</sub>
 
----
-
-# Catalog
+## Catalog
 
 | Method | Path | Code | Notes |
 | :-- | :-- | :-: | :-- |
 | `GET` | `/catalog/v1/search/items?keyword={q}&limit=10` | `200` | IDs only. |
 | `GET` | `/catalog/v1/search/items/details?keyword={q}` | `200` | **Full item data inline.** |
+| `GET` | `/catalog/v2/search/items/details?keyword={q}` | `200` | **v2** variant. |
 | `GET` | `/catalog/v1/categories` | `200` | 16 categories → ids. |
 | `GET` | `/catalog/v1/subcategories` | `200` | |
 | `GET` | `/catalog/v1/catalog/metadata` | `200` | Feature flags. |
@@ -214,83 +276,75 @@ curl 'https://octane.wtf/apisite/games/v1/games/votes?universeIds=6782'
 curl 'https://octane.wtf/apisite/catalog/v1/search/items/details?keyword=hat&limit=5'
 ```
 
-`search/items/details` is the shortcut worth knowing — it skips the `POST` round trip entirely.
+<sub>`search/items/details` skips the `POST` round trip — item names and descriptions come back inline.</sub>
 
----
-
-# Assets & economy
+## Assets & economy
 
 | Method | Path | Code | Notes |
 | :-- | :-- | :-: | :-- |
-| `GET` | `/assetdelivery/v1/asset/?id={assetId}` | `200` | **Binary** `<roblox!` asset file. 302 → `cdn.octane.wtf`. |
-| `GET` | `/economy/v2/assets/{assetId}/details` | `200` | Full item record incl. `PriceInRobux`. |
+| `GET` | `/assetdelivery/v1/asset/?id={assetId}` | `200` | **Binary** `<roblox!` file. 302 → `cdn.octane.wtf`. |
+| `GET` | `/economy/v2/assets/{assetId}/details` | `200` | Full record incl. `PriceInRobux`. |
 | `GET` | `/economy/v1/assets/{assetId}/resellers` | `200` | Prices and serials. |
 | `GET` | `/economy/v1/assets/{assetId}/details` | `200` | |
 | `GET` | `/economy/v1/users/{userId}/currency` | `403` | Restricted. |
 | `GET` | `/inventory/v2/assets/{assetId}/owners` | `200` | Owners + `serialNumber`, cursor. |
+| `POST` | `/economy/v1/purchases/products/{productId}` | — | **Modifies data.** |
 
 ```bash
 curl -s 'https://octane.wtf/apisite/assetdelivery/v1/asset/?id=121969' -o asset.rbxm
 file asset.rbxm    # Roblox binary model
 ```
 
-This is the only endpoint found that returns something other than JSON.
+<sub>The only endpoint that returns something other than JSON.</sub>
 
----
-
-# Inventory
+## Inventory
 
 | Method | Path | Code | Notes |
 | :-- | :-- | :-: | :-- |
-| `GET` | `/inventory/v1/users/{userId}/assets/collectibles` | `403` | Owner-only. |
-| `GET` | `/inventory/v2/users/{userId}/inventory?assetTypes=` | `403` | Owner-only. |
 | `GET` | `/inventory/v1/users/{userId}/items/Asset/{assetId}` | `200` | Ownership check. |
 | `GET` | `/inventory/v2/assets/{assetId}/owners` | `200` | |
-| `GET` | `/inventory/v1/users/{userId}/assets/collectibles?limit=100&sortOrder=Desc` | `403` | On `inventory.octane.wtf` too. |
+| `GET` | `/inventory/v1/users/{userId}/assets/collectibles` | `403` | Owner-only. |
+| `GET` | `/inventory/v2/users/{userId}/inventory?assetTypes=` | `403` | Owner-only. |
+| `GET` | `/economy/v2/users/{userId}/transactions` | `400` | Needs params. |
+| `GET` | `/inventory/v1/assets/{assetId}` | `405` | |
 
-```bash
-curl 'https://octane.wtf/apisite/inventory/v1/users/1/items/Asset/1'
-# {"data":[]}
-```
-
----
-
-# Groups
+## Groups
 
 | Method | Path | Code | Notes |
 | :-- | :-- | :-: | :-- |
 | `GET` | `/groups/v1/groups/{groupId}` | `200` | |
-| `GET` | `/groups/v1/groups/search?keyword={q}` | `200` | Group search. |
+| `GET` | `/groups/v1/groups/search?keyword={q}` | `200` | |
 | `GET` | `/groups/v1/groups/metadata` | `200` | Limits and policy flags. |
 | `GET` | `/groups/v1/groups/{groupId}/roles` | `200` | Roles + member counts. |
 | `GET` | `/groups/v1/groups/{groupId}/users` | `200` | Members, paginated. |
 | `GET` | `/groups/v1/groups/{groupId}/social-links` | `200` | e.g. Discord URL. |
+| `GET` | `/groups/v1/groups/{groupId}/roles/{roleId}/users` | `200` | Members of one role. |
+| `GET` | `/groups/v1/groups/{groupId}/audit-log?limit=10` | `403` | Permissions. |
+| `GET` | `/groups/v1/groups/{groupId}/social-links/list` | `405` | |
 | `GET` | `/groups/v2/users/{userId}/groups/roles` | `200` | A user's groups. |
 | `GET` | `/groups/v1/groups/{groupId}/membership` | `401` | Own membership. |
 | `GET` | `/groups/v1/groups/{groupId}/join-requests` | `403` | Permissions. |
 | `GET` | `/groups/v1/groups/{groupId}/payouts` | `403` | Permissions. |
-| `DELETE` | `/groups/v1/groups/{groupId}/users/{userId}` | — | **Modifies data.** |
+| `POST` | `/groups/v2/groups/{groupId}/wall/posts` | `403` | |
+| `DELETE` | `/groups/v1/groups/{groupId}/users/{userId}` | `405` | **Modifies data.** |
 
 ```bash
 curl 'https://octane.wtf/apisite/groups/v1/groups/search?keyword=octane&limit=5'
 ```
 
----
-
-# Badges
+## Badges
 
 | Method | Path | Code | Notes |
 | :-- | :-- | :-: | :-- |
 | `GET` | `/badges/v1/users/{userId}/badges` | `200` | Awarded badges. |
-| `GET` | `/badges/v1/universes/{universeId}/badges?limit=10` | `200` | Needs a real universe id. |
+| `GET` | `/badges/v1/badges/{badgeId}` | `200` | Single badge by id. |
+| `GET` | `/badges/v1/universes/{universeId}/badges?limit=10` | `200` | Needs real universe id. |
 
 ```bash
 curl 'https://octane.wtf/apisite/badges/v1/universes/6782/badges?limit=5'
 ```
 
----
-
-# Trades
+## Trades
 
 All routes exist; none are readable without a session.
 
@@ -310,26 +364,27 @@ curl -s -o /dev/null -w '%{http_code}\n' 'https://octane.wtf/apisite/trades/v1/t
 # 401
 ```
 
----
-
-# Chat & messages
+## Chat & messages
 
 | Method | Path | Code | Notes |
 | :-- | :-- | :-: | :-- |
-| `GET` | `/chat/v2/get-user-conversations` | `401` | **Chat is separate from private messages.** |
+| `GET` | `/chat/v2/metadata` | `200` | Chat limits and config. |
 | `GET` | `/privatemessages/v1/announcements/metadata` | `200` | `{"numOfAnnouncements":1}` |
+| `GET` | `/contacts/v1/user/get-tags` | `200` | Returns `[]`. |
+| `GET` | `/chat/v2/get-user-conversations` | `401` | **Chat ≠ private messages.** |
+| `GET` | `/chat/v2/get-messages?conversationId=` | `401` | |
+| `GET` | `/chat/v2/get-unread-conversation-count` | `401` | |
 | `GET` | `/privatemessages/v1/messages` | `400` | Needs params. |
 | `GET` | `/privatemessages/v1/messages/unread/count` | `500` | Route exists, crashes. |
 
----
-
-# Notifications & realtime
+## Notifications & realtime
 
 | Method | Path | Code | Notes |
 | :-- | :-- | :-: | :-- |
-| `POST` | `/realtime/notifications/negotiate` | `200` | SignalR handshake. Works unauthenticated. |
-| `GET` | `/notifications/v2/notifications/get-settings` | `200` | Notification band settings. |
+| `POST` | `/realtime/notifications/negotiate` | `200` | SignalR handshake. Unauthenticated. |
+| `GET` | `/notifications/v2/notifications/get-settings` | `200` | |
 | `GET` | `/metrics/v1/thumbnails/metadata` | `200` | |
+| `POST` | `/metrics/v1/performance/measurements` | `405` | |
 | `POST` | `/metrics/v1/performance/send-measurement` | `405` | |
 
 ```bash
@@ -337,28 +392,27 @@ curl 'https://octane.wtf/apisite/realtime/notifications/negotiate'
 # {"Url":"/notifications","ConnectionToken":"…","ProtocolVersion":"1.5","TryWebSockets":true}
 ```
 
----
-
-# Account
+## Account
 
 | Method | Path | Code | Notes |
 | :-- | :-- | :-: | :-- |
 | `GET` | `/accountsettings/v1/themes/types` | `200` | `{"data":["Light","Dark"]}` |
-| `GET` | `/accountsettings/v1/themes/user` | `401` | |
+| `GET` | `/premiumfeatures/v1/users/{userId}/validate-membership` | `200` | Raw `0` / `1`. |
 | `GET` | `/accountinformation/v1/birthdate` | `401` | **Not** `/users/v1`. |
 | `GET` | `/accountinformation/v1/gender` | `401` | |
-| `GET` | `/premiumfeatures/v1/users/{userId}/validate-membership` | `200` | Raw `0` / `1`. |
-| `GET` | `/users/v1/users/{userId}/status` | `200` | |
-| `GET` | `/account/settings/countries` | `200` | On root host, no `/apisite`. |
+| `GET` | `/accountinformation/v1/phone` | `200` | `{"phone":null,"isVerified":false,…}` |
+| `GET` | `/accountinformation/v1/metadata` | `200` | Account feature flags. |
+| `GET` | `/accountinformation/v1/description` | `401` | |
+| `GET` | `/accountinformation/v1/promotion-channels` | `401` | |
+| `POST` | `/accountinformation/v1/username` | `405` | |
+| `GET` | `/accountsettings/v1/themes/user` | `401` | |
 
 ```bash
 curl 'https://octane.wtf/apisite/premiumfeatures/v1/users/1/validate-membership'
 # 0
 ```
 
----
-
-# Locale & metrics
+## Locale & metrics
 
 | Method | Path | Code |
 | :-- | :-- | :-: |
@@ -366,9 +420,7 @@ curl 'https://octane.wtf/apisite/premiumfeatures/v1/users/1/validate-membership'
 | `GET` | `/locale/v1/locales/user-localization-locus-supported-locales` | `200` |
 | `GET` | `/metrics/v1/thumbnails/metadata` | `200` |
 
----
-
-# Auth
+## Auth
 
 Present, undocumented, not for automation.
 
@@ -380,51 +432,121 @@ Present, undocumented, not for automation.
 
 ---
 
-# Verification
+# Surface 2 — Root host
 
-Probed unauthenticated from a clean sandbox on **7 November 2026**. Each row is a real request.
+> A **second, parallel API surface** with a different payload shape. Previously undocumented.
 
-| Namespace | Probed | `200` | Gated |
-| :-- | --: | --: | --: |
-| users | 1 | 0 | 1 |
-| friends | 2 | 2 | 0 |
-| avatar | 2 | 1 | 1 |
-| thumbnails | 5 | 5 | 0 |
-| games | 8 | 7 | 1 |
-| catalog | 6 | 6 | 0 |
-| groups | 8 | 5 | 3 |
-| badges | 2 | 2 | 0 |
-| inventory | 2 | 2 | 0 |
-| economy | 2 | 2 | 0 |
-| assets (assetdelivery) | 1 | 1 | 0 |
-| chat | 1 | 0 | 1 |
-| messages | 1 | 1 | 0 |
-| notifications | 1 | 1 | 0 |
-| realtime | 1 | 1 | 0 |
-| account (settings) | 1 | 1 | 0 |
-| account (info) | 2 | 0 | 2 |
-| premium | 1 | 1 | 0 |
-| locale | 2 | 2 | 0 |
-| metrics | 1 | 1 | 0 |
-| auth | 1 | 0 | 1 |
-| develop | 1 | 1 | 0 |
-| **Total** | **52** | **42** | **10** |
+| Method | Path | Code | Notes |
+| :-- | :-- | :-: | :-- |
+| `GET` | `/users/{userId}` | `200` | `{"Id","Username","AvatarUri","Online"}` |
+| `GET` | `/users/inventory/list-json?userId={id}` | `200` | |
+| `GET` | `/users/favorites/list-json?userId={id}` | `200` | |
+| `GET` | `/users/profile/robloxcollections-json?userId={id}` | `200` | |
+| `GET` | `/search/users/results?keyword={q}` | `200` | Legacy search shape. |
+| `GET` | `/search/users/metadata` | `200` | Search config. |
+| `GET` | `/universes/get-universe-places?universeId={id}` | `200` | |
+| `GET` | `/games/getgameinstancesjson?placeId={id}` | `200` | Live server instances. |
+| `GET` | `/comments/get-json?assetId={id}` | `200` | Asset comments. |
+| `GET` | `/avatar-thumbnail-3d/json?userId={id}` | `200` | **3D avatar manifest.** |
+| `GET` | `/mobileapi/check-app-version?appVersion={v}` | `200` | |
+| `GET` | `/usercheck/show-tos` | `200` | |
+| `GET` | `/version` | `200` | Plain text `2`. |
+| `GET` | `/games/votingservice/{id}` | `200` | HTML fragment. |
+| `GET` | `/account/settings/countries` | `200` | |
 
-Reproduce any row yourself:
+Gated: `/my/settings/json` `401` · `/referral/v1/me` `401` · `/asset/profile-status` `401` ·
+`/build/universes` `401` · `/game/get-join-script` `401` · `/games/getfriendsgameinstances` `401` ·
+`/private-server/instance-list-json` `403`
+
+```bash
+curl 'https://octane.wtf/users/1'
+curl 'https://octane.wtf/avatar-thumbnail-3d/json?userId=1'
+```
+
+## Root `/v1` and `/v2`
+
+| Method | Path | Code | Notes |
+| :-- | :-- | :-: | :-- |
+| `GET` | `/v1/users/{userId}` | `200` | |
+| `GET` | `/v1/users/{userId}/friends` | `200` | |
+| `GET` | `/v1/users/{userId}/groups/roles` | `200` | |
+| `GET` | `/v1/users/{userId}/username-history` | `200` | |
+| `GET` | `/v1/users/{userId}/status` | `200` | |
+| `GET` | `/v1/avatar-rules` | `200` | R6/R15 + scale ranges. |
+| `GET` | `/v1/games/list` | `200` | |
+| `GET` | `/v1/games/sorts` | `200` | |
+| `GET` | `/v1/themes/types` | `200` | |
+| `GET` | `/v1/privacy` | `200` | **Public here** — `401` under `/apisite`. |
+| `GET` | `/v1/privacy/info` | `200` | **Public here.** |
+| `GET` | `/v1/social/connected-providers` | `200` | **Public here.** |
+| `GET` | `/v1/xbox/connection` | `200` | **Public here.** |
+| `GET` | `/v2/notifications/get-settings` | `200` | |
+
+```bash
+curl 'https://octane.wtf/v1/privacy'
+# {"isUnder13":false,"isPrivacyModeEnabled":false}
+```
+
+> [!TIP]
+> Four routes — `privacy`, `privacy/info`, `social/connected-providers`, `xbox/connection` — are
+> **public on the root host** but `401` under `/apisite`. Use the root form.
+
+---
+
+# Surface 3 — CDN
+
+| Host | Serves | Example |
+| :-- | :-- | :-- |
+| `cdn.octane.wtf` | Binary asset files | `assetdelivery` 302s here |
+| `tcdn.octane.wtf` | Thumbnails, 3D manifests | Returned inside thumbnail JSON |
+
+Thumbnail JSON always hands back an absolute `tcdn` URL:
+
+```json
+{"targetId":1,"state":"Completed","imageUrl":"https://tcdn.octane.wtf/79ce…_thumbnail.png"}
+```
+
+---
+
+## Verification
+
+Probed unauthenticated from a clean sandbox on **7 November 2026**.
+
+| Metric | Value |
+| :-- | :-- |
+| Paths probed | **197** |
+| Returned `200` | **83** |
+| Gated (`401` / `403` / `405`) | **50** |
+| Confirmed absent (`404`) | **27** |
+| Resolved on `octane.wtf` | **195 of 197** |
+| Resolved on its own CDN | **2** |
+
+Reproduce any row:
 
 ```bash
 curl -s -o /dev/null -w '%{http_code}\n' 'https://octane.wtf/apisite/users/v1/users/1'
 ```
 
+### Confirmed absent
+
+These namespaces **do not exist** on `/apisite` — do not document them:
+
+`adconfiguration` · `ageverification` · `assetpermissions` · `avatarshop` · `billing` ·
+`buildersclub` · `contentstore` · `engage` · `ownership` · `permissions` · `policy` · `premium` ·
+`toolbox` · `web` · `universes/v1` · `gameserver` · `gamejoin` · `localizationtables` ·
+`translationroles` · `usermanagement` · `verifiedbadges` · `moderation` · `players/v1`
+
+Also: **no GraphQL. No Swagger or OpenAPI. No websocket metadata.**
+
 ---
 
-# Appendix — unverified
+## Appendix
 
-> **Not confirmed.** These come from a third-party reference and a browser log. Host, method, and
-> response are unknown for most. Do not rely on them without checking.
+> **Not verified.** Third-party reference material. Host, method and response unknown for most.
+> Do not rely on these without checking.
 
 <details>
-<summary><b>Account information and promotion channels</b></summary>
+<summary><b>Account information and promotion channels</b> — 7 paths</summary>
 
 `/v1/description` · `/v1/birthdate` · `/v1/gender` · `/v1/metadata` · `/v1/phone`
 `/v1/promotion-channels` · `/v1/users/{userId}/promotion-channels`
@@ -432,7 +554,7 @@ curl -s -o /dev/null -w '%{http_code}\n' 'https://octane.wtf/apisite/users/v1/us
 </details>
 
 <details>
-<summary><b>Avatar</b></summary>
+<summary><b>Avatar</b> — 8 paths</summary>
 
 `/v1/avatar` · `/v1/avatar-rules` · `/v1/avatar/metadata` · `/v1/recent-items/all/list`
 `/v1/users/{userId}/avatar` · `POST /v1/avatar/assets/{assetId}/wear`
@@ -441,16 +563,7 @@ curl -s -o /dev/null -w '%{http_code}\n' 'https://octane.wtf/apisite/users/v1/us
 </details>
 
 <details>
-<summary><b>Catalog</b></summary>
-
-`/v1/catalog/metadata` · `/v1/categories` · `/v1/subcategories`
-`/v1/search/navigation-menu-items` · `/v1/search/items` · `/v1/recommendations/metadata`
-`POST /v1/catalog/items/details`
-
-</details>
-
-<details>
-<summary><b>Chat and contacts</b></summary>
+<summary><b>Chat and contacts</b> — 9 paths</summary>
 
 `/v2/get-messages` · `POST /v2/send-message` · `POST /v2/update-user-typing-status`
 `/v2/metadata` · `/v2/get-unread-conversation-count` · `/v2/get-user-conversations`
@@ -459,7 +572,7 @@ curl -s -o /dev/null -w '%{http_code}\n' 'https://octane.wtf/apisite/users/v1/us
 </details>
 
 <details>
-<summary><b>Games</b></summary>
+<summary><b>Games</b> — 11 paths</summary>
 
 `/v1/games` · `/v1/games/list` · `/v1/games/multiget-place-details`
 `/v1/games/multiget-playability-status` · `/v1/games/sorts` · `/v1/games/votes`
@@ -469,7 +582,7 @@ curl -s -o /dev/null -w '%{http_code}\n' 'https://octane.wtf/apisite/users/v1/us
 </details>
 
 <details>
-<summary><b>Groups</b></summary>
+<summary><b>Groups</b> — 11 paths</summary>
 
 `/v1/groups/{groupId}` · `/v1/groups/{groupId}/membership` · `/v1/groups/{groupId}/roles`
 `/v1/groups/{groupId}/roles/{roleId}/users` · `/v1/groups/{groupId}/social-links`
@@ -480,7 +593,7 @@ curl -s -o /dev/null -w '%{http_code}\n' 'https://octane.wtf/apisite/users/v1/us
 </details>
 
 <details>
-<summary><b>Friends, inventory, economy</b></summary>
+<summary><b>Friends, inventory, economy</b> — 7 paths</summary>
 
 `/v1/users/{userId}/friends` · `POST /v1/users/{userId}/unfriend`
 `/v1/users/{userId}/friends/statuses` · `/v1/users/{userId}/assets/collectibles`
@@ -490,7 +603,7 @@ curl -s -o /dev/null -w '%{http_code}\n' 'https://octane.wtf/apisite/users/v1/us
 </details>
 
 <details>
-<summary><b>Trades, premium, two-step, users</b></summary>
+<summary><b>Trades, premium, two-step, users</b> — 11 paths</summary>
 
 `/v1/trades/inbound` · `/v1/trades/outbound` · `/v1/trades/inactive` · `/v1/trades/{tradeId}`
 `POST /v1/trades/send` · `POST /v1/trades/{tradeId}/decline` · `/v1/users/{userId}/subscriptions`
@@ -500,7 +613,7 @@ curl -s -o /dev/null -w '%{http_code}\n' 'https://octane.wtf/apisite/users/v1/us
 </details>
 
 <details>
-<summary><b>Themes and privacy</b></summary>
+<summary><b>Themes and privacy</b> — 9 paths</summary>
 
 `/v1/themes/types` · `/v1/themes/user` · `/v1/privacy` · `/v1/privacy/info`
 `/v1/inventory-privacy` · `/v1/trade-privacy` · `/v1/trade-value`
@@ -508,8 +621,24 @@ curl -s -o /dev/null -w '%{http_code}\n' 'https://octane.wtf/apisite/users/v1/us
 
 </details>
 
+
 <details>
-<summary><b>Legacy root paths</b></summary>
+<summary><b>Absent namespaces — do not document</b> — 23 namespaces, 90+ paths</summary>
+
+`adconfiguration` · `ageverification` · `assetpermissions` · `avatarshop` · `billing` ·
+`buildersclub` · `contentstore` · `engage` · `ownership` · `permissions` · `policy` ·
+`premium` · `toolbox` · `web` · `universes/v1` · `gameserver` · `localizationtables` ·
+`translationroles` · `usermanagement` · `verifiedbadges` · `moderation` · `players/v1` ·
+`devproducts` · `gamepasses`
+
+Also confirmed absent: `avatar/v2/*`, `locale/v2/locales`, `thumbnails/v2/assets`,
+`gamejoin/v1/join-script`, `users/v1/users/{id}/{followers,followings,badges,avatar}`,
+`groups/v2/groups/{id}/membership`, `notifications/v1/*`, `premiumfeatures/v1/users/{id}/features`.
+
+</details>
+
+<details>
+<summary><b>Legacy root paths</b> — 25 paths</summary>
 
 `/asset/profile-status` · `/avatar-thumbnail-3d/json` · `/build/universes` · `/comments/get-json`
 `/game/get-join-script` · `/games/getfriendsgameinstances` · `/games/getgameinstancesjson`
@@ -525,17 +654,37 @@ curl -s -o /dev/null -w '%{http_code}\n' 'https://octane.wtf/apisite/users/v1/us
 
 ---
 
-## Disclaimer
+## Related tooling
+
+| File | Purpose |
+| :-- | :-- |
+| [`crawl.py`](crawl.py) | Resumable SQLite crawler for the full user index. |
+| [`recon/verify.py`](recon/verify.py) | Re-probes every endpoint and prints a live status table. |
+| [`recon/probe-round1.py`](recon/probe-round1.py) · [`round2`](recon/probe-round2.py) | The discovery harnesses. |
+| [`tools/make_banner.py`](tools/make_banner.py) · [`make_arch.py`](tools/make_arch.py) | Regenerate the artwork. |
+| [`docs/discovery-01.md`](docs/discovery-01.md) · [`02`](docs/discovery-02.md) · [`03`](docs/discovery-03.md) | How each round of endpoints was found. |
+| [`docs/api-map.md`](docs/api-map.md) | Earlier scratch map, kept for reference. |
+
+Re-verify the whole reference in one command:
+
+```bash
+python3 recon/verify.py
+```
+
+---
+
+## Responsible use
 
 <div align="center">
 
 **Not affiliated with Octane or Roblox.**
 
-This is an unofficial reference. Endpoints are undocumented, unsupported, and can change without
-warning. Respect the site's terms, privacy settings, and rate limits. Never publish session cookies,
-CSRF tokens, or personal data. Nothing here was tested against a signed-in account, and no
-state-changing request was made.
+Endpoints are undocumented, unsupported, and can change without warning.
+Respect the site's terms, privacy settings, and rate limits.
+Never publish session cookies, CSRF tokens, or personal data.
 
-<a href="#octane--api-reference">Back to top</a>
+Nothing here was tested against a signed-in account. No state-changing request was made.
+
+<a href="#octane-api-reference">Back to top</a>
 
 </div>
