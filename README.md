@@ -1,12 +1,12 @@
 <div align="center">
 
-<img src="assets/banner.png" alt="Octane API Reference" width="100%">
+<img src="assets/banner.png" alt="Octane APIs" width="100%">
 
-# OCTANE API REFERENCE
+# OCTANE APIs
 
-**83 verified endpoints across three API surfaces.**
+**121 verified routes across three API surfaces — 83 readable, 38 mutation.**
 
-[![Endpoints](https://img.shields.io/badge/endpoints-83%20live-22D3EE?style=flat-square&labelColor=120C2B)](#verification)
+[![Endpoints](https://img.shields.io/badge/routes-121%20verified-22D3EE?style=flat-square&labelColor=120C2B)](#verification)
 [![Probed](https://img.shields.io/badge/probed-143-6C5CE7?style=flat-square&labelColor=120C2B)](#verification)
 [![Auth](https://img.shields.io/badge/auth-none%20required-3BBBC9?style=flat-square&labelColor=120C2B)](#quick-start)
 [![Checked](https://img.shields.io/badge/checked-7%20nov%202026-8B7BFF?style=flat-square&labelColor=120C2B)](#verification)
@@ -38,7 +38,7 @@ Every endpoint in the verified sections was **confirmed working from a clean san
 
 <div align="center">
 
-| 83 | 197 | 50 | 0 |
+| 121 | 374 | 88 | 0 |
 |:--:|:--:|:--:|:--:|
 | **live endpoints** | **paths probed** | **gated routes** | **auth needed to start** |
 
@@ -109,15 +109,19 @@ The same player through two surfaces:
 | `200` | Public | Works with no account. |
 | `400` | Bad parameters | Route exists. Fix the request. |
 | `401` | Session required | Route exists. Needs auth. |
-| `403` | Blocked or CSRF | Route exists. Needs a token or permission. |
+| `403` | Blocked or CSRF | Needs a token or permission. **Does not prove the route exists.** |
 | `404` | **Does not exist** | Body is literally `Not found`. |
-| `405` | Wrong method | Route exists. Usually needs `POST`. |
+| `405` | Wrong method | **Route confirmed.** Read the `allow` header. |
 | `429` | Rate limited | Back off. |
 | `500` | Server error | Route exists, crashes. |
 
-> [!TIP]
-> **`403 Token Validation Failed` on any `POST` means the route is real.** It needs the CSRF
-> handshake, not permission. Use it as a route-existence check.
+> [!IMPORTANT]
+> **`403 Token Validation Failed` proves nothing.** That middleware runs *before* routing, so a
+> path that does not exist returns the identical `403`. `POST /zzz-fake-logout` and
+> `POST /apisite/auth/v9/logout` both return it.
+>
+> **The reliable test is `GET`:** a real POST-only route answers `405` with an `allow` header;
+> a fake one answers `404`. This is how every mutation route below was confirmed.
 
 > [!WARNING]
 > **`OPTIONS` is useless here.** Every route returns `204` with the same blanket
@@ -270,7 +274,8 @@ curl 'https://octane.wtf/apisite/games/v1/games/votes?universeIds=6782'
 | `GET` | `/catalog/v1/catalog/metadata` | `200` | Feature flags. |
 | `GET` | `/catalog/v1/recommendations/metadata` | `200` | |
 | `GET` | `/catalog/v1/search/navigation-menu-items` | `200` | |
-| `POST` | `/catalog/v1/catalog/items/details` | `403` | CSRF. Body `{"items":[{"itemType":"Asset","id":1}]}` |
+| `GET` | `/catalog/v1/bundles/{bundleId}/details` | `400` | Real route — `"Invalid bundle"`, not `Not found`. |
+| `POST` | `/catalog/v1/catalog/items/details` | `405` | `allow: POST`. Body `{"items":[{"itemType":"Asset","id":1}]}` |
 
 ```bash
 curl 'https://octane.wtf/apisite/catalog/v1/search/items/details?keyword=hat&limit=5'
@@ -428,7 +433,7 @@ Present, undocumented, not for automation.
 | :-- | :-- | :-: |
 | `GET`/`POST` | `/auth/v1/login` | `405` on GET |
 | `GET`/`POST` | `/auth/v2/login` | `405` on GET |
-| `GET`/`POST` | `/auth/v1/logout` | `405` on GET |
+| `POST` | `/auth/v1/logout` | `405` on GET · **this is the sign-out endpoint** |
 
 ---
 
@@ -508,17 +513,76 @@ Thumbnail JSON always hands back an absolute `tcdn` URL:
 
 ---
 
+# Mutation routes
+
+> **38 POST / PATCH / DELETE routes, confirmed by `GET` returning `405` with an `allow` header.**
+> All require a session. None were executed. The method in each row is the exact `allow` value.
+
+| Path | `allow` | What it does |
+| :-- | :-- | :-- |
+| `/auth/v1/login` | `POST` | Sign in. |
+| `/auth/v2/login` | `POST` | Sign in (v2). |
+| `/auth/v1/logout` | `POST` | **Sign out.** |
+| `/users/v1/users` | `POST` | Create account. |
+| `/users/v1/usernames/users` | `POST` | Batch username → id lookup. |
+| `/users/v1/users/{userId}/display-names` | `PATCH` | Change display name. |
+| `/accountinformation/v1/username` | `POST` | Change username. |
+| `/avatar/v1/avatar/set-wearing-assets` | `POST` | Set worn assets. |
+| `/avatar/v1/avatar/assets/{assetId}/wear` | `POST` | Wear one asset. |
+| `/avatar/v1/avatar/redraw-thumbnail` | `POST` | Regenerate avatar thumbnail. |
+| `/avatar/v1/outfits/{outfitId}` | `PATCH` | Edit an outfit. |
+| `/friends/v1/users/{userId}/follow` | `POST` | Follow a user. |
+| `/friends/v1/users/{userId}/unfriend` | `POST` | Remove a friend. |
+| `/friends/v1/user/following-exists` | `POST` | Check following relationship. |
+| `/presence/v1/presence/users` | `POST` | Batch presence lookup. |
+| `/presence/v1/presence/register-app-presence` | `POST` | Register presence. |
+| `/groups/v1/groups/{groupId}/users/{userId}` | `DELETE`, `PATCH` | Remove or edit a member. |
+| `/groups/v1/groups/{groupId}/description` | `PATCH`, `POST` | Edit group description. |
+| `/groups/v1/groups/{groupId}/status` | `PATCH` | Edit group status. |
+| `/groups/v1/groups/{groupId}/wall/posts` | `POST` | Post to the group wall. |
+| `/trades/v1/trades/{tradeId}/accept` | `POST` | Accept a trade. |
+| `/trades/v1/trades/{tradeId}/decline` | `POST` | Decline a trade. |
+| `/trades/v1/trades/{tradeId}/counter` | `POST` | Counter a trade. |
+| `/chat/v2/send-message` | `POST` | Send a chat message. |
+| `/chat/v2/add-to-conversation` | `POST` | Add someone to a conversation. |
+| `/chat/v2/remove-from-conversation` | `POST` | Remove someone. |
+| `/chat/v2/update-user-typing-status` | `POST` | Typing indicator. |
+| `/privatemessages/v1/messages/send` | `POST` | Send a private message. |
+| `/economy/v1/purchases/products/{productId}` | `POST` | **Purchase a product.** |
+| `/inventory/v1/assets/{assetId}` | `PATCH` | Edit an owned asset. |
+| `/catalog/v1/catalog/items/details` | `POST` | Batch item details. |
+| `/thumbnails/v1/batch` | `POST` | Batch thumbnails. |
+| `/badges/v1/user/badges/{badgeId}` | `DELETE` | Remove a badge. |
+| `/develop/v1/places/{placeId}` | `PATCH`, `POST` | Update a place. |
+| `/gamejoin/v1/join-game` | `POST` | Join a game server. |
+| `/gamejoin/v1/join-game-instance` | `POST` | Join a specific instance. |
+| `/metrics/v1/performance/measurements` | `POST` | Submit telemetry. |
+| `/metrics/v1/performance/send-measurement` | `POST` | Submit telemetry. |
+
+```bash
+# confirm a route yourself — 405 means it exists, 404 means it doesn't
+curl -s -o /dev/null -w '%{http_code}\n' 'https://octane.wtf/apisite/auth/v1/logout'   # 405
+curl -s -o /dev/null -w '%{http_code}\n' 'https://octane.wtf/apisite/auth/v1/nope'     # 404
+```
+
+> [!WARNING]
+> These change data and were **not** executed. `economy/v1/purchases/products/{id}` spends
+> currency, the trade routes move items, and `DELETE /badges/v1/user/badges/{id}` is destructive.
+
+---
+
 ## Verification
 
 Probed unauthenticated from a clean sandbox on **7 November 2026**.
 
 | Metric | Value |
 | :-- | :-- |
-| Paths probed | **197** |
+| Paths probed | **374** |
 | Returned `200` | **83** |
-| Gated (`401` / `403` / `405`) | **50** |
+| Confirmed mutation routes (`405`) | **38** |
+| Gated (`401` / `403` / `400` / `500`) | **50** |
 | Confirmed absent (`404`) | **27** |
-| Resolved on `octane.wtf` | **195 of 197** |
+| Confirmed absent (`404`) | **60** |
 | Resolved on its own CDN | **2** |
 
 Reproduce any row:
@@ -660,9 +724,9 @@ Also confirmed absent: `avatar/v2/*`, `locale/v2/locales`, `thumbnails/v2/assets
 | :-- | :-- |
 | [`crawl.py`](crawl.py) | Resumable SQLite crawler for the full user index. |
 | [`recon/verify.py`](recon/verify.py) | Re-probes every endpoint and prints a live status table. |
-| [`recon/probe-round1.py`](recon/probe-round1.py) · [`round2`](recon/probe-round2.py) | The discovery harnesses. |
+| [`recon/probe-round1.py`](recon/probe-round1.py) · [`round2`](recon/probe-round2.py) · [`probe-get.py`](recon/probe-get.py) | The discovery harnesses. |
 | [`tools/make_banner.py`](tools/make_banner.py) · [`make_arch.py`](tools/make_arch.py) | Regenerate the artwork. |
-| [`docs/discovery-01.md`](docs/discovery-01.md) · [`02`](docs/discovery-02.md) · [`03`](docs/discovery-03.md) | How each round of endpoints was found. |
+| [`docs/discovery-01.md`](docs/discovery-01.md) · [`02`](docs/discovery-02.md) · [`03`](docs/discovery-03.md) · [`04`](docs/discovery-04.md) | How each round of endpoints was found. |
 | [`docs/api-map.md`](docs/api-map.md) | Earlier scratch map, kept for reference. |
 
 Re-verify the whole reference in one command:
@@ -685,6 +749,6 @@ Never publish session cookies, CSRF tokens, or personal data.
 
 Nothing here was tested against a signed-in account. No state-changing request was made.
 
-<a href="#octane-api-reference">Back to top</a>
+<a href="#octane-apis">Back to top</a>
 
 </div>
