@@ -4,7 +4,7 @@
 
 # OCTANE APIs
 
-**121 verified routes across three API surfaces — 83 readable, 38 mutation.**
+**≈176 verified routes across four API surfaces — 106 readable, 51 mutation.**
 
 [![Endpoints](https://img.shields.io/badge/routes-121%20verified-22D3EE?style=flat-square&labelColor=120C2B)](#verification)
 [![Probed](https://img.shields.io/badge/probed-143-6C5CE7?style=flat-square&labelColor=120C2B)](#verification)
@@ -38,7 +38,7 @@ Every endpoint in the verified sections was **confirmed working from a clean san
 
 <div align="center">
 
-| 121 | 374 | 88 | 0 |
+| 176 | 840 | 33 | 0 |
 |:--:|:--:|:--:|:--:|
 | **live endpoints** | **paths probed** | **gated routes** | **auth needed to start** |
 
@@ -80,6 +80,7 @@ There are **three independent surfaces** on the same host, and they do not behav
 | **Modern** | `https://octane.wtf/apisite` | camelCase JSON | 48 endpoints. The main surface. |
 | **Legacy** | `https://octane.wtf/` | PascalCase JSON, some HTML | 29 endpoints. Different payloads for the same data. |
 | **CDN** | `cdn.` / `tcdn.octane.wtf` | binary + image URLs | Asset files and avatars. |
+| **Auth** | `https://apis.octane.wtf` | redirects | Discord OAuth — the only signup path. |
 
 The same player through two surfaces:
 
@@ -128,6 +129,13 @@ The same player through two surfaces:
 > `allow: GET, POST, PUT, PATCH, DELETE` header — it even claims `DELETE` on `/auth/v1/login`.
 > That is CORS middleware, not route metadata. Don't use it to enumerate methods.
 
+> [!CAUTION]
+> **Three things that look like endpoints but aren't:**
+> 1. **`403` on a mutation** — middleware before routing. Fakes return it too.
+> 2. **`302` to `/auth/login` on the root host** — the SPA catch-all. 17 "endpoints" are fake this way.
+> 3. **Paths inside an enum route** — `trades/{values,value,history,count}` all match
+>    `/trades/{tradeType}` and fail validation. They look routable and are not.
+
 ---
 
 ## Endpoint index
@@ -170,7 +178,7 @@ AUTH   none for public paths
 | `GET` | `/users/v1/users/{userId}/status` | `200` | `{"status":null}` |
 | `GET` | `/users/v1/users/{userId}/username-history` | `200` | Paginated. |
 | `GET` | `/users/v1/users/authenticated` | `401` | Current user. |
-| `POST` | `/users/v1/usernames/users` | `403` | Batch username → id. CSRF. |
+| `POST` | `/users/v1/usernames/users` | `405` | `allow: POST`. Batch username → id. |
 | `PATCH` | `/users/v1/users/{userId}/display-names` | `405` | |
 
 ```bash
@@ -194,6 +202,9 @@ curl 'https://octane.wtf/apisite/users/v1/users/1'
 | `GET` | `/friends/v1/users/{userId}/followers/count` | `200` | |
 | `GET` | `/friends/v1/users/{userId}/followings/count` | `200` | |
 | `GET` | `/friends/v1/users/{userId}/friends/count` | `200` | `{"count":0}` |
+| `POST` | `/friends/v1/users/{userId}/request-friendship` | `405` | `allow: POST` — send a friend request. |
+| `POST` | `/friends/v1/users/{userId}/accept-friend-request` | `405` | `allow: POST`. |
+| `POST` | `/friends/v1/users/{userId}/decline-friend-request` | `405` | `allow: POST`. |
 | `GET` | `/friends/v1/users/{userId}/friends/statuses?userIds=` | `401` | |
 | `GET` | `/friends/v1/user/friend-requests/count` | `401` | |
 | `POST` | `/friends/v1/user/following-exists` | `405` | |
@@ -222,6 +233,8 @@ Each entry carries `isOnline`, `isDeleted`, `isBanned`, `presenceType`, `friendF
 | `GET` | `/thumbnails/v1/badges/icons?badgeIds=` | `200` | |
 | `GET` | `/thumbnails/v1/groups/icons?groupIds=` | `200` | |
 | `GET` | `/thumbnails/v1/games/multiget/thumbnail?universeIds=` | `200` | |
+| `GET` | `/thumbnails/v1/assets?assetIds=` | `200` | Batch asset thumbnails. |
+| `PATCH`/`POST` | `/thumbnails/v1/places/thumbnails` | `405` | `allow: PATCH, POST`. |
 | `GET` | `/avatar/v1/avatar` | `401` | Own avatar. |
 | `GET` | `/avatar/v1/recent-items/all/list` | `401` | |
 | `POST` | `/avatar/v1/avatar/redraw-thumbnail` | `405` | |
@@ -245,12 +258,19 @@ curl 'https://octane.wtf/apisite/thumbnails/v1/users/avatar?userIds=1'
 | `GET` | `/games/v2/games/{universeId}/media` | `200` | |
 | `GET` | `/games/v1/games/multiget-place-details?placeIds={ids}` | `200` | Builder, price, playability. |
 | `GET` | `/games/v1/games/multiget-playability-status?universeIds=` | `200` | |
+| `GET` | `/games/v1/games/{universeId}/votes` | `200` | Single-universe variant. |
+| `GET` | `/games/v1/games/{universeId}/media` | `200` | v1 variant (v2 also live). |
+| `GET` | `/games/v1/games/{universeId}/game-passes` | `200` | Cursor-paged. |
 | `GET` | `/develop/v1/universes/{universeId}/places` | `200` | |
 | `GET` | `/develop/v1/universes/{universeId}` | `200` | `rootPlaceId`, `privacyType`. |
 | `GET` | `/develop/v1/universes/{universeId}/teamcreate` | `200` | `{"isEnabled":false}` |
 | `GET` | `/develop/v1/universes/{universeId}/icon` | `200` | `{"imageId":null,"isApproved":true}` |
 | `GET` | `/develop/v1/universes/{universeId}/thumbnails` | `401` | |
 | `GET` | `/develop/v1/places/{placeId}` | `405` | |
+| `GET` | `/develop/v1/assets?assetIds=` | `200` | Batch asset details — name, type, description. |
+| `PATCH` | `/develop/v1/assets/{assetId}` | `405` | `allow: PATCH`. |
+| `GET` | `/catalog/v1/recommendations/asset/{assetTypeId}` | `200` | Live item recs with prices. **Takes an asset *type* id**, not an asset id. |
+| `GET` | `/catalog/v1/bundles/{bundleId}/details` | `400` | |
 | `POST` | `/gamejoin/v1/join-game` | `405` | **New namespace.** |
 | `POST` | `/gamejoin/v1/join-game-instance` | `405` | |
 | `GET` | `/games/v1/games/recommendations/game/{universeId}` | `401` | |
@@ -288,6 +308,7 @@ curl 'https://octane.wtf/apisite/catalog/v1/search/items/details?keyword=hat&lim
 | Method | Path | Code | Notes |
 | :-- | :-- | :-: | :-- |
 | `GET` | `/assetdelivery/v1/asset/?id={assetId}` | `200` | **Binary** `<roblox!` file. 302 → `cdn.octane.wtf`. |
+| `GET` | `/economy/v1/products/{productId}` | `200` | `{productId, assetId, price, isForSale, purchasable, reason}` — works logged out. |
 | `GET` | `/economy/v2/assets/{assetId}/details` | `200` | Full record incl. `PriceInRobux`. |
 | `GET` | `/economy/v1/assets/{assetId}/resellers` | `200` | Prices and serials. |
 | `GET` | `/economy/v1/assets/{assetId}/details` | `200` | |
@@ -326,6 +347,7 @@ file asset.rbxm    # Roblox binary model
 | `GET` | `/groups/v1/groups/{groupId}/roles/{roleId}/users` | `200` | Members of one role. |
 | `GET` | `/groups/v1/groups/{groupId}/audit-log?limit=10` | `403` | Permissions. |
 | `GET` | `/groups/v1/groups/{groupId}/social-links/list` | `405` | |
+| `DELETE` | `/groups/v1/groups/{groupId}/wall/posts/{postId}` | `405` | `allow: DELETE`. |
 | `GET` | `/groups/v2/users/{userId}/groups/roles` | `200` | A user's groups. |
 | `GET` | `/groups/v1/groups/{groupId}/membership` | `401` | Own membership. |
 | `GET` | `/groups/v1/groups/{groupId}/join-requests` | `403` | Permissions. |
@@ -344,6 +366,7 @@ curl 'https://octane.wtf/apisite/groups/v1/groups/search?keyword=octane&limit=5'
 | `GET` | `/badges/v1/users/{userId}/badges` | `200` | Awarded badges. |
 | `GET` | `/badges/v1/badges/{badgeId}` | `200` | Single badge by id. |
 | `GET` | `/badges/v1/universes/{universeId}/badges?limit=10` | `200` | Needs real universe id. |
+| `DELETE` | `/badges/v1/users/{userId}/badges/{badgeId}` | `405` | User-scoped revoke variant. |
 
 ```bash
 curl 'https://octane.wtf/apisite/badges/v1/universes/6782/badges?limit=5'
@@ -369,6 +392,22 @@ curl -s -o /dev/null -w '%{http_code}\n' 'https://octane.wtf/apisite/trades/v1/t
 # 401
 ```
 
+### The trade-type enum is closed
+
+`/trades/v1/trades/{tradeType}` accepts exactly **four** values. Nineteen were fuzzed:
+
+| Value | Code |
+| :-- | :-: |
+| `inbound` | `401` |
+| `outbound` | `401` |
+| `inactive` | `401` |
+| `completed` | `401` |
+
+> [!WARNING]
+> `values`, `value`, `history`, `count`, `metadata` and `expired` are **mirages** — they fall through
+> into the same enum route and fail validation, so they look like routes but are not distinct
+> endpoints.
+
 ## Chat & messages
 
 | Method | Path | Code | Notes |
@@ -376,6 +415,13 @@ curl -s -o /dev/null -w '%{http_code}\n' 'https://octane.wtf/apisite/trades/v1/t
 | `GET` | `/chat/v2/metadata` | `200` | Chat limits and config. |
 | `GET` | `/privatemessages/v1/announcements/metadata` | `200` | `{"numOfAnnouncements":1}` |
 | `GET` | `/contacts/v1/user/get-tags` | `200` | Returns `[]`. |
+| `GET` | `/contacts/v1/contacts/metadata` | `200` | `{"multiGetContactsMaxSize":200}` |
+| `GET` | `/privatemessages/v1/announcements` | `200` | **Public** admin announcements list. |
+| `GET` | `/privatemessages/v1/messages/{messageId}` | `400` | |
+| `POST` | `/privatemessages/v1/messages/archive` | `405` | `allow: POST`. |
+| `POST` | `/chat/v2/mark-as-read` | `405` | `allow: POST`. |
+| `POST` | `/chat/v2/rename-group-conversation` | `405` | `allow: POST`. |
+| `POST` | `/chat/v2/start-cloud-edit-conversation` | `405` | `allow: POST`. |
 | `GET` | `/chat/v2/get-user-conversations` | `401` | **Chat ≠ private messages.** |
 | `GET` | `/chat/v2/get-messages?conversationId=` | `401` | |
 | `GET` | `/chat/v2/get-unread-conversation-count` | `401` | |
@@ -407,6 +453,7 @@ curl 'https://octane.wtf/apisite/realtime/notifications/negotiate'
 | `GET` | `/accountinformation/v1/gender` | `401` | |
 | `GET` | `/accountinformation/v1/phone` | `200` | `{"phone":null,"isVerified":false,…}` |
 | `GET` | `/accountinformation/v1/metadata` | `200` | Account feature flags. |
+| `GET` | `/accountinformation/v1/users/{userId}/promotion-channels` | `200` | **Any user's** social links. |
 | `GET` | `/accountinformation/v1/description` | `401` | |
 | `GET` | `/accountinformation/v1/promotion-channels` | `401` | |
 | `POST` | `/accountinformation/v1/username` | `405` | |
@@ -433,7 +480,9 @@ Present, undocumented, not for automation.
 | :-- | :-- | :-: |
 | `GET`/`POST` | `/auth/v1/login` | `405` on GET |
 | `GET`/`POST` | `/auth/v2/login` | `405` on GET |
-| `POST` | `/auth/v1/logout` | `405` on GET · **this is the sign-out endpoint** |
+| `POST` | `/auth/v1/logout` | `405` on GET · **the sign-out endpoint** |
+| `POST` | `/auth/v2/logout` | `405` on GET · v2 sign-out |
+| `POST` | `/auth/v2/signup` | `405` on GET · handler `503`s — non-Discord signup closed |
 
 ---
 
@@ -515,7 +564,7 @@ Thumbnail JSON always hands back an absolute `tcdn` URL:
 
 # Mutation routes
 
-> **38 POST / PATCH / DELETE routes, confirmed by `GET` returning `405` with an `allow` header.**
+> **51 POST / PATCH / DELETE routes, confirmed by `GET` returning `405` with an `allow` header.**
 > All require a session. None were executed. The method in each row is the exact `allow` value.
 
 | Path | `allow` | What it does |
@@ -523,6 +572,8 @@ Thumbnail JSON always hands back an absolute `tcdn` URL:
 | `/auth/v1/login` | `POST` | Sign in. |
 | `/auth/v2/login` | `POST` | Sign in (v2). |
 | `/auth/v1/logout` | `POST` | **Sign out.** |
+| `/auth/v2/logout` | `POST` | Sign out (v2). |
+| `/auth/v2/signup` | `POST` | Create account — `503`s in practice. |
 | `/users/v1/users` | `POST` | Create account. |
 | `/users/v1/usernames/users` | `POST` | Batch username → id lookup. |
 | `/users/v1/users/{userId}/display-names` | `PATCH` | Change display name. |
@@ -532,6 +583,9 @@ Thumbnail JSON always hands back an absolute `tcdn` URL:
 | `/avatar/v1/avatar/redraw-thumbnail` | `POST` | Regenerate avatar thumbnail. |
 | `/avatar/v1/outfits/{outfitId}` | `PATCH` | Edit an outfit. |
 | `/friends/v1/users/{userId}/follow` | `POST` | Follow a user. |
+| `/friends/v1/users/{userId}/request-friendship` | `POST` | Send a friend request. |
+| `/friends/v1/users/{userId}/accept-friend-request` | `POST` | Accept a friend request. |
+| `/friends/v1/users/{userId}/decline-friend-request` | `POST` | Decline a friend request. |
 | `/friends/v1/users/{userId}/unfriend` | `POST` | Remove a friend. |
 | `/friends/v1/user/following-exists` | `POST` | Check following relationship. |
 | `/presence/v1/presence/users` | `POST` | Batch presence lookup. |
@@ -540,10 +594,15 @@ Thumbnail JSON always hands back an absolute `tcdn` URL:
 | `/groups/v1/groups/{groupId}/description` | `PATCH`, `POST` | Edit group description. |
 | `/groups/v1/groups/{groupId}/status` | `PATCH` | Edit group status. |
 | `/groups/v1/groups/{groupId}/wall/posts` | `POST` | Post to the group wall. |
+| `/groups/v1/groups/{groupId}/wall/posts/{postId}` | `DELETE` | Delete a wall post. |
 | `/trades/v1/trades/{tradeId}/accept` | `POST` | Accept a trade. |
 | `/trades/v1/trades/{tradeId}/decline` | `POST` | Decline a trade. |
 | `/trades/v1/trades/{tradeId}/counter` | `POST` | Counter a trade. |
 | `/chat/v2/send-message` | `POST` | Send a chat message. |
+| `/chat/v2/mark-as-read` | `POST` | Mark a conversation read. |
+| `/chat/v2/rename-group-conversation` | `POST` | Rename a group chat. |
+| `/chat/v2/start-cloud-edit-conversation` | `POST` | Start a cloud-edit conversation. |
+| `/privatemessages/v1/messages/archive` | `POST` | Archive messages. |
 | `/chat/v2/add-to-conversation` | `POST` | Add someone to a conversation. |
 | `/chat/v2/remove-from-conversation` | `POST` | Remove someone. |
 | `/chat/v2/update-user-typing-status` | `POST` | Typing indicator. |
@@ -553,7 +612,10 @@ Thumbnail JSON always hands back an absolute `tcdn` URL:
 | `/catalog/v1/catalog/items/details` | `POST` | Batch item details. |
 | `/thumbnails/v1/batch` | `POST` | Batch thumbnails. |
 | `/badges/v1/user/badges/{badgeId}` | `DELETE` | Remove a badge. |
+| `/badges/v1/users/{userId}/badges/{badgeId}` | `DELETE` | Revoke a specific user's badge. |
 | `/develop/v1/places/{placeId}` | `PATCH`, `POST` | Update a place. |
+| `/develop/v1/assets/{assetId}` | `PATCH` | Update an asset. |
+| `/thumbnails/v1/places/thumbnails` | `PATCH`, `POST` | Update place thumbnails. |
 | `/gamejoin/v1/join-game` | `POST` | Join a game server. |
 | `/gamejoin/v1/join-game-instance` | `POST` | Join a specific instance. |
 | `/metrics/v1/performance/measurements` | `POST` | Submit telemetry. |
@@ -571,15 +633,96 @@ curl -s -o /dev/null -w '%{http_code}\n' 'https://octane.wtf/apisite/auth/v1/nop
 
 ---
 
+# Surface 4 — `apis.octane.wtf`
+
+> The auth host. Separate from the main site, and the **only way to sign up**.
+
+| Method | Path | Code | Notes |
+| :-- | :-- | :-: | :-- |
+| `GET` | `/v1/discord/url` | `302` | → Discord OAuth, scope `identify guilds.join`. |
+| `GET` | `/v1/discord/callback` | `400` | OAuth return; requires a `code` parameter. |
+| `POST` | `/v1/users` | `405` | CSRF-gated; no such route past the middleware. |
+
+```bash
+curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' 'https://apis.octane.wtf/v1/discord/url'
+# 302 https://discord.com/api/oauth2/authorize?client_id=…&scope=identify+guilds.join…
+```
+
+Signup is Discord-only. `POST /apisite/auth/v2/signup` exists but its handler returns `503` —
+username/password registration is closed.
+
+> [!NOTE]
+> Web login pages append a hidden `vt` parameter containing a SHA-256 device fingerprint.
+> That is generated client-side in the web layer; there is no API route for it.
+
+---
+
+# RAP and price data
+
+There is **no dedicated RAP endpoint** — thirteen candidate shapes all return `404`. Item value has
+to be composed from what is public:
+
+| Data | Where |
+| :-- | :-- |
+| Current sale price | `/economy/v1/products/{productId}` → `price`, `isForSale` |
+| Catalog price | `/economy/v2/assets/{assetId}/details` → `PriceInRobux` |
+| Resale listings | `/economy/v1/assets/{assetId}/resellers` → `price` + `serialNumber` |
+| Ownership / serials | `/inventory/v2/assets/{assetId}/owners` |
+| Per-item trade value | Only inside `trades/v1/trades/{tradeId}` payloads (session) and `/v1/trade-value` (session) |
+
+```bash
+curl 'https://octane.wtf/apisite/economy/v1/products/121969'
+# {"productId":121969,"assetId":121969,"price":105,"isForSale":false,"purchasable":false,"reason":"Unauthorized"}
+```
+
+> [!TIP]
+> `products/{id}` answers **logged out** and reports `purchasable` plus a `reason`. It is the
+> cheapest way to check whether an item can be bought without touching the purchase route.
+
+---
+
+# Absent namespaces
+
+Confirmed `404`. Do not document or rely on these.
+
+| Round | Namespaces |
+| :-- | :-- |
+| Baseline (23) | `adconfiguration` `ageverification` `assetpermissions` `avatarshop` `billing` `buildersclub` `contentstore` `engage` `ownership` `permissions` `policy` `premium` `toolbox` `web` `universes/v1` `gameserver` `localizationtables` `translationroles` `usermanagement` `verifiedbadges` `moderation` `players/v1` `devproducts` `gamepasses` |
+| Later (10) | `marketplace` `purchases` `search` `publish` `twostepverification` `capture` `sharelinks` `midas` `points` `ads` `datastores` |
+
+**Two-step verification has no API.** `twostepverification/*` and `accountsettings/v1/security` are
+both `404` — TOTP is handled entirely by the web layer.
+
+---
+
+# Root host catch-all
+
+These return `302` to `/auth/login`. They are the SPA catching all traffic — **not endpoints**:
+
+`mobileapi/{login,logout,getappinfo,userinfo}` · `recipe` · `feeds/recentactivity.json` ·
+`Game/JoinGame.ashx` · `API/Marketplace.ashx` · `money.aspx/getmytransactions` · `catalog/browse` ·
+`abuseReport/assetReport`
+
+Also fake on the root host: `v1/{description,birthdate,gender,phone,metadata,promotion-channels}` ·
+`v1/users/{id}/{subscriptions,configuration,avatar,description,groups/primary/role}` · `v1/trades/*` ·
+`v2/users/{id}/games` · `v2/groups/{id}/games` · `v2/games/{id}/media` ·
+`v2/recommendations/{id}` · `v1/users/{id}/{currency,revenue/summary/day}`
+
+> [!IMPORTANT]
+> Those last two **do** exist — but under `/apisite`, not the root. The root host has exactly
+> 15 JSON endpoints; everything else is either auth-gated or a `302`.
+
+---
+
 ## Verification
 
 Probed unauthenticated from a clean sandbox on **7 November 2026**.
 
 | Metric | Value |
 | :-- | :-- |
-| Paths probed | **374** |
+| Paths probed | **840+** |
 | Returned `200` | **83** |
-| Confirmed mutation routes (`405`) | **38** |
+| Confirmed mutation routes (`405`) | **51** |
 | Gated (`401` / `403` / `400` / `500`) | **50** |
 | Confirmed absent (`404`) | **27** |
 | Confirmed absent (`404`) | **60** |
@@ -685,21 +828,6 @@ Also: **no GraphQL. No Swagger or OpenAPI. No websocket metadata.**
 
 </details>
 
-
-<details>
-<summary><b>Absent namespaces — do not document</b> — 23 namespaces, 90+ paths</summary>
-
-`adconfiguration` · `ageverification` · `assetpermissions` · `avatarshop` · `billing` ·
-`buildersclub` · `contentstore` · `engage` · `ownership` · `permissions` · `policy` ·
-`premium` · `toolbox` · `web` · `universes/v1` · `gameserver` · `localizationtables` ·
-`translationroles` · `usermanagement` · `verifiedbadges` · `moderation` · `players/v1` ·
-`devproducts` · `gamepasses`
-
-Also confirmed absent: `avatar/v2/*`, `locale/v2/locales`, `thumbnails/v2/assets`,
-`gamejoin/v1/join-script`, `users/v1/users/{id}/{followers,followings,badges,avatar}`,
-`groups/v2/groups/{id}/membership`, `notifications/v1/*`, `premiumfeatures/v1/users/{id}/features`.
-
-</details>
 
 <details>
 <summary><b>Legacy root paths</b> — 25 paths</summary>
